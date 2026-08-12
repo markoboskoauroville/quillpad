@@ -87,6 +87,12 @@ import org.qosp.notes.ui.editor.markdown.toggleCheckmarkCurrentLine
 import org.qosp.notes.ui.media.MediaActivity
 import org.qosp.notes.ui.recorder.RECORDED_ATTACHMENT
 import org.qosp.notes.ui.recorder.RECORD_CODE
+import org.qosp.notes.transcribe.AssemblyAiTranscriber
+import org.qosp.notes.transcribe.KeyRing
+import java.io.File
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import org.qosp.notes.ui.recorder.RecordAudioDialog
 import org.qosp.notes.ui.reminders.EditReminderDialog
 import org.qosp.notes.ui.tasks.TaskRecyclerListener
@@ -324,6 +330,7 @@ class EditorFragment : BaseFragment(R.layout.fragment_editor) {
         setFragmentResultListener(RECORD_CODE) { _, bundle ->
             val attachment = bundle.getParcelable<Attachment>(RECORDED_ATTACHMENT) ?: return@setFragmentResultListener
             model.insertAttachments(attachment)
+            transcribeAttachment(attachment)
         }
 
         setFragmentResultListener(MARKDOWN_DIALOG_RESULT) { _, bundle ->
@@ -340,6 +347,61 @@ class EditorFragment : BaseFragment(R.layout.fragment_editor) {
             updateEditMode(!model.inEditMode)
             if (model.inEditMode) requestFocusForFields(true) else view.hideKeyboard()
         }
+    }
+
+    // --- voice -> text (AssemblyAI, over the key ring) ---
+    private fun transcribeAttachment(attachment: Attachment) {
+        val ctx = requireContext()
+        if (KeyRing.order(ctx).isEmpty()) { promptForKey { transcribeAttachment(attachment) }; return }
+        val uri = attachment.uri(ctx) ?: return
+        val cache = File(ctx.cacheDir, "transcribe_${System.currentTimeMillis()}.m4a")
+        try {
+            ctx.contentResolver.openInputStream(uri)?.use { input ->
+                cache.outputStream().use { input.copyTo(it) }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(ctx, "Ne mogu pročitati snimku.", Toast.LENGTH_SHORT).show(); return
+        }
+        Toast.makeText(ctx, "Prepisujem…", Toast.LENGTH_SHORT).show()
+        AssemblyAiTranscriber.transcribe(ctx, cache, object : AssemblyAiTranscriber.Listener {
+            override fun onProgress(message: String) {}
+            override fun onDone(text: String) {
+                cache.delete()
+                if (text.isNotBlank()) insertTranscript(text)
+            }
+            override fun onError(kind: AssemblyAiTranscriber.ErrorKind, message: String) {
+                cache.delete()
+                val msg = when (kind) {
+                    AssemblyAiTranscriber.ErrorKind.CONNECTION -> "Nema veze s internetom."
+                    AssemblyAiTranscriber.ErrorKind.KEY -> "AI ključ ne radi. Provjeri ključ u postavkama."
+                    AssemblyAiTranscriber.ErrorKind.RATE -> "Previše zahtjeva, probaj za koji čas."
+                    else -> "Prepisivanje nije uspjelo."
+                }
+                Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+            }
+        })
+    }
+
+    private fun insertTranscript(transcript: String) {
+        binding.editTextContent.apply {
+            val cur = text
+            val at = cur?.length ?: 0
+            val prefix = if (at > 0) "\n" else ""
+            cur?.insert(at, prefix + transcript)
+        }
+    }
+
+    private fun promptForKey(then: () -> Unit) {
+        val input = EditText(requireContext()).apply { hint = "AssemblyAI ključ" }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Unesi AssemblyAI ključ")
+            .setMessage("Ključ za pretvaranje glasa u tekst. Unese se jednom.")
+            .setView(input)
+            .setPositiveButton("Spremi") { _, _ ->
+                if (KeyRing.add(requireContext(), input.text.toString())) then()
+            }
+            .setNegativeButton("Odustani", null)
+            .show()
     }
 
     @Deprecated("Deprecated in Java")
