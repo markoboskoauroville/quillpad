@@ -24,7 +24,7 @@ jobs:
         id: ver
         run: |
           V=$(grep -oE 'versionName = "[0-9.]+"' app/build.gradle.kts | grep -oE '[0-9.]+' | head -1)
-          NAME="Quillpad_v${V}.apk"
+          NAME="TA_TA_Talk_v${V}.apk"
           APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
           cp "$APK" "$NAME"
           echo "apk=$NAME" >> "$GITHUB_OUTPUT"
@@ -35,7 +35,7 @@ jobs:
         run: |
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest "${{ steps.ver.outputs.apk }}" \
-            --title "Quillpad (fork) v${{ steps.ver.outputs.ver }}" \
+            --title "TA-TA Talk v${{ steps.ver.outputs.ver }}" \
             --notes "Skini ${{ steps.ver.outputs.apk }} ispod, otvori na telefonu i instaliraj."
       - uses: actions/upload-artifact@v4
         with:

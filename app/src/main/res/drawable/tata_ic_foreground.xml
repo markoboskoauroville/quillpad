@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+  <group android:scaleX="0.7" android:scaleY="0.7" android:pivotX="54" android:pivotY="54">
+
+    <!-- head -->
+    <path android:fillColor="#C8CCD0"
+        android:pathData="M44,34 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0" />
+
+    <!-- shoulders -->
+    <path android:fillColor="#C8CCD0"
+        android:pathData="M24,74 C24,60 33,54 44,54 C55,54 64,60 64,74 L64,76 L24,76 Z" />
+
+    <!-- three sound waves opening to the right (stroked, steady) -->
+    <path android:strokeColor="#C8CCD0" android:strokeWidth="3.4" android:fillColor="#00000000"
+        android:strokeLineCap="round" android:pathData="M70,40 a13,13 0 0 1 0,22" />
+    <path android:strokeColor="#C8CCD0" android:strokeWidth="3.4" android:fillColor="#00000000"
+        android:strokeLineCap="round" android:pathData="M76,34 a20,20 0 0 1 0,34" />
+    <path android:strokeColor="#C8CCD0" android:strokeWidth="3.4" android:fillColor="#00000000"
+        android:strokeLineCap="round" android:pathData="M82,28 a27,27 0 0 1 0,46" />
+</group>
+</vector>

@@ -15,7 +15,7 @@ android {
     namespace = "org.qosp.notes"
 
     defaultConfig {
-        applicationId = "io.github.quillpad"
+        applicationId = "org.mantra.tatatalk"
         minSdk = 24
         targetSdk = 35
         versionCode = 54
