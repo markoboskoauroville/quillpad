@@ -18,8 +18,8 @@ android {
         applicationId = "org.mantra.tatatalk"
         minSdk = 24
         targetSdk = 35
-        versionCode = 55
-        versionName = "1.5.13"
+        versionCode = 56
+        versionName = "1.5.14"
 
         testInstrumentationRunner = "org.qosp.notes.TestRunner"
 

@@ -89,6 +89,10 @@ import org.qosp.notes.ui.recorder.RECORDED_ATTACHMENT
 import org.qosp.notes.ui.recorder.RECORD_CODE
 import org.qosp.notes.transcribe.AssemblyAiTranscriber
 import org.qosp.notes.transcribe.KeyRing
+import org.qosp.notes.tts.SpeechifyKeyRing
+import org.qosp.notes.tts.SpeechifyVoices
+import org.qosp.notes.tts.SpeechifyTts
+import org.qosp.notes.tts.SpeechifyReader
 import java.io.File
 import android.widget.EditText
 import android.widget.Toast
@@ -349,6 +353,61 @@ class EditorFragment : BaseFragment(R.layout.fragment_editor) {
         }
     }
 
+    // --- read aloud via Speechify, with word highlighting ---
+    private var speechReader: SpeechifyReader? = null
+    private var speechSpan: android.text.style.BackgroundColorSpan? = null
+
+    private fun readAloud() {
+        val text = binding.editTextContent.text?.toString()?.trim().orEmpty()
+        if (text.isEmpty()) { Toast.makeText(requireContext(), "Bilješka je prazna.", Toast.LENGTH_SHORT).show(); return }
+        if (speechReader?.isPlaying == true) { speechReader?.stop(); clearHighlight(); return }
+        val ring = SpeechifyKeyRing(requireContext())
+        if (!ring.hasKeys()) { promptForSpeechifyKey { readAloud() }; return }
+        Toast.makeText(requireContext(), "Pripremam čitanje…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val voices = SpeechifyVoices.voicesFor(requireContext(), ring, "uk")
+            val voiceId = voices.firstOrNull()?.id
+            val act = activity ?: return@Thread
+            if (voiceId == null) { act.runOnUiThread { Toast.makeText(requireContext(), "Nema glasa ili ključ ne radi.", Toast.LENGTH_LONG).show() }; return@Thread }
+            val mp3 = java.io.File(requireContext().cacheDir, "speechify_read.mp3")
+            val synth = SpeechifyTts.synth(ring, text, voiceId, mp3)
+            act.runOnUiThread {
+                if (synth.mp3 == null) { Toast.makeText(requireContext(), "Čitanje nije uspjelo.", Toast.LENGTH_LONG).show(); return@runOnUiThread }
+                val reader = SpeechifyReader().also { speechReader = it }
+                reader.play(synth.mp3, synth.tokens, onWord = { s, e -> highlightWord(s, e) }, onDone = { clearHighlight() })
+            }
+        }.start()
+    }
+
+    private fun highlightWord(s: Int, e: Int) {
+        val sp = binding.editTextContent.text ?: return
+        speechSpan?.let { sp.removeSpan(it) }
+        val a = s.coerceIn(0, sp.length); val b = e.coerceIn(a, sp.length)
+        if (b <= a) return
+        val span = android.text.style.BackgroundColorSpan(0x66E8B15C.toInt())
+        sp.setSpan(span, a, b, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        speechSpan = span
+    }
+
+    private fun clearHighlight() {
+        val sp = binding.editTextContent.text ?: return
+        speechSpan?.let { sp.removeSpan(it); speechSpan = null }
+    }
+
+    private fun promptForSpeechifyKey(then: () -> Unit) {
+        val input = EditText(requireContext()).apply { hint = "Speechify ključ (sk_...)" }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Unesi Speechify ključ")
+            .setMessage("Ključ za čitanje naglas. Unese se jednom.")
+            .setView(input)
+            .setPositiveButton("Spremi") { _, _ ->
+                if (SpeechifyKeyRing(requireContext()).addKey(input.text.toString(), "ručno")) then()
+                else Toast.makeText(requireContext(), "To ne izgleda kao Speechify ključ.", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Odustani", null)
+            .show()
+    }
+
     // --- voice -> text (AssemblyAI, over the key ring) ---
     private fun transcribeAttachment(attachment: Attachment) {
         val ctx = requireContext()
@@ -418,6 +477,10 @@ class EditorFragment : BaseFragment(R.layout.fragment_editor) {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         data.note?.let { note ->
             when (item.itemId) {
+                R.id.action_read_aloud -> {
+                    readAloud()
+                }
+
                 R.id.action_convert_note -> {
                     if (note.isList) model.toTextNote() else model.toList()
                 }

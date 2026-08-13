@@ -117,4 +117,9 @@
             android:id="@+id/action_share"
             android:title="@string/action_share"
             app:showAsAction="never"/>
+    <item
+        android:id="@+id/action_read_aloud"
+        android:title="@string/read_aloud"
+        android:icon="@android:drawable/ic_media_play"
+        app:showAsAction="never" />
 </menu>

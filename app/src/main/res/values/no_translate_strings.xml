@@ -137,4 +137,5 @@ See the License for the specific language governing permissions and
 limitations under the License.\n```\n\n
 
     </string>
+    <string name="read_aloud" translatable="false">Čitaj naglas</string>
 </resources>
